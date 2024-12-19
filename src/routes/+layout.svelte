@@ -19,7 +19,9 @@
 </script>
 
 <div class="h-min-100vh">
-  <slot />
+  <div class="max-width">
+    <slot />
+  </div>
   <footer>
     <p>
       <a href="about">About</a>
@@ -35,6 +37,10 @@
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
+  }
+  .max-width {
+    max-width: 960px;
+    align-self: center;
   }
   footer {
     margin-top: auto;

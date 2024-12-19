@@ -43,7 +43,7 @@ let filterString = "";
 {#if posts}
 <div class="container-fluid py-3">
   <!-- ヘッダー -->
-  <div class="row mb-4">
+  <div class="row mb-3">
     <div class="col-12">
       <div class="bg-primary text-white p-3 rounded">
         <h1 class="h4 mb-0">Bluesky フィード作成</h1>
@@ -52,7 +52,7 @@ let filterString = "";
   </div>
 
   <!-- Step 1 & 2: 投稿選択と選択済み投稿 -->
-  <div class="row mb-4 g-4">
+  <div class="row mb-3 g-2">
     <!-- 投稿選択 -->
     <div class="col-12 col-md-6">
       <div class="card h-100">
@@ -94,12 +94,12 @@ let filterString = "";
     </div>
   </div>
 
-  <div class="text-center mb-4">
+  <div class="text-center mb-3">
     <button class="btn btn-lg btn-primary w-50">単語を抽出</button>
   </div>
 
 <!-- Step 3 & 4: 単語選択とフィルター作成 -->
-  <div class="row mb-4 g-4">
+  <div class="row mb-3 g-2">
     <!-- 単語選択 -->
     <div class="col-12 col-md-6">
       <div class="card h-100">
@@ -151,7 +151,7 @@ let filterString = "";
   </div>
 
   <!-- Step 5: プレビューと保存 -->
-  <div class="row mb-4">
+  <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header bg-primary text-white">
