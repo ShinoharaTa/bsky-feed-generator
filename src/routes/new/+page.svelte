@@ -95,7 +95,7 @@ let filterString = "";
   </div>
 
   <div class="text-center mb-4">
-    <button class="btn btn-lg btn-primary">単語を抽出</button>
+    <button class="btn btn-lg btn-primary w-50">単語を抽出</button>
   </div>
 
 <!-- Step 3 & 4: 単語選択とフィルター作成 -->
