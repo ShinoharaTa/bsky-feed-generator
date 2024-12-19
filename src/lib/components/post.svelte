@@ -6,13 +6,13 @@ export let post: FeedViewPost;
 
 <article class="card p-2 mb-2">
 {#if post}
-  <div class="d-flex">
+  <div class="d-flex align-items-center">
     <div>
       {#if post.post.author.avatar}
         <img src="{post.post.author.avatar}" alt="" class="avatar">
       {:else}
         <div class="avatar default">
-          <img src="/icons/user-default-icon.svg" alt="" class="inner-icon">
+          <img src="/icons/man.svg" alt="" class="inner-icon">
         </div>
       {/if}
     </div>
@@ -30,6 +30,9 @@ export let post: FeedViewPost;
       </div>
       {/if}
     </div>
+    <button class="btn p-1 me-1">
+      <img src="/icons/plus-circle.svg" alt="" class="img-fluid">
+    </button>
   </div>
   <div class="feed_text mt-1">
     {#if post.post.record.$type === "app.bsky.feed.post"}
@@ -53,7 +56,7 @@ export let post: FeedViewPost;
     align-items: end;
     justify-content: center;
     &.default {
-      border: 0.1rem solid #000;
+      border: 0.13rem solid #000;
     }
     >.inner-icon {
       width: 1.6rem;
