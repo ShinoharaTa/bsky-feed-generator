@@ -6,24 +6,31 @@ import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
 import type { Post as PostType } from "$lib/types";
 
-let posts: PostType[];
+const posts: PostType[] = [];
 const init = async () => {
 	const result = bluesky.checkSession();
 	if (!result) {
 		goto("/login");
 	}
 	const records = await bluesky.getFollowingFeed(100);
-  posts = records
-  .filter(r => "$type" in r.post.record && r.post.record.$type  === "app.bsky.feed.post")
-  .map(r => {
-    return {
-      avatar: r.post.author.avatar,
-      displayName: r.post.author.displayName,
-      handle: r.post.author.handle,
-      text: "text" in r.post.record ? r.post.record.text : "",
-      selected: false
-    }
-  });
+	records
+		.filter(
+			(r) =>
+				"$type" in r.post.record &&
+				r.post.record.$type === "app.bsky.feed.post",
+		)
+		.map((r) => {
+			posts.push({
+				avatar: r.post.author.avatar,
+				displayName: r.post.author.displayName,
+				handle: r.post.author.handle,
+				text:
+					"text" in r.post.record && r.post.record.text
+						? (r.post.record.text as string)
+						: undefined,
+				selected: false,
+			});
+		});
 };
 if (browser) {
 	init();
@@ -53,14 +60,14 @@ const analyzedWords = [
 
 // 正規表現のエスケープ処理
 function escapeRegExp(word: string): string {
-  return word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+	return word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // 選択された単語から正規表現フィルターを生成
 $: filter = analyzedWords
-  .filter(word => word.selected)
-  .map(word => `(${escapeRegExp(word.word)})`)
-  .join(' || ')
+	.filter((word) => word.selected)
+	.map((word) => `(${escapeRegExp(word.word)})`)
+	.join(" || ");
 </script>
 
 {#if posts}
