@@ -6,38 +6,36 @@ import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
 import type { Post as PostType } from "$lib/types";
 
-const posts: PostType[] = [];
+let posts: PostType[] = [];
 const init = async () => {
 	const result = bluesky.checkSession();
 	if (!result) {
 		goto("/login");
 	}
 	const records = await bluesky.getFollowingFeed(100);
-	records
+	posts = records
 		.filter(
 			(r) =>
 				"$type" in r.post.record &&
 				r.post.record.$type === "app.bsky.feed.post",
 		)
-		.map((r) => {
-			posts.push({
-				avatar: r.post.author.avatar,
-				displayName: r.post.author.displayName,
-				handle: r.post.author.handle,
-				text:
-					"text" in r.post.record && r.post.record.text
-						? (r.post.record.text as string)
-						: undefined,
-				selected: false,
-			});
-		});
+		.map((r) => ({
+			avatar: r.post.author.avatar,
+			displayName: r.post.author.displayName,
+			handle: r.post.author.handle,
+			text:
+				"text" in r.post.record && r.post.record.text
+					? (r.post.record.text as string)
+					: undefined,
+			selected: false,
+		}));
 };
 if (browser) {
 	init();
 }
 
 // 投稿選択のデータ
-const selectedPosts = [
+let selectedPosts: string[] = [
 	"今日の夕飯はカレーライス！作り置きしておいたルーを温めるだけで超楽チン😊 #料理 #時短レシピ",
 	"新しいカメラが届いた！これから色々な写真を撮るのが楽しみ。とりあえず窓から見える夕焼けを撮ってみた📸✨",
 	"気になってた本、やっと読み終わった。めちゃくちゃ面白かったけど、最後の展開は予想外だった…！",
@@ -93,7 +91,7 @@ $: filter = analyzedWords
           <div class="overflow-auto" style="max-height: 600px;">
             <div class="list-group p-2">
               {#each posts as post}
-              <Post {post}></Post>
+              <Post {post} on:click={() => { selectedPosts = [...selectedPosts, post.text!]}}></Post>
               {/each}
             </div>
           </div>
@@ -110,8 +108,12 @@ $: filter = analyzedWords
         <div class="card-body p-0">
           <div class="overflow-auto" style="max-height: 600px;">
             <div class="list-group p-2">
-              {#each selectedPosts as post}
-              <SelectedPost {post}></SelectedPost>
+              {#each [...selectedPosts].reverse() as post, index}
+              <SelectedPost {post}
+                on:click={() => {
+                  const actualIndex = selectedPosts.length - 1 - index
+                  selectedPosts = selectedPosts.filter((_, i) => i !== actualIndex)
+                }}></SelectedPost>
               {:else}
                 <p class="text-muted">投稿が選択されていません</p>
               {/each}

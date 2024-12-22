@@ -8,7 +8,7 @@ export let post: string;
     <div class="feed_text mt-1">
       {post}
     </div>
-    <button class="btn p-1 mx-1 flex-shrink-0">
+    <button class="btn p-1 mx-1 flex-shrink-0" on:click>
       <img src="/icons/xmark-circle.svg" alt="" class="img-fluid">
     </button>
   </div>

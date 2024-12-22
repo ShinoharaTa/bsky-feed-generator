@@ -29,7 +29,7 @@ export let post: Post;
       </div>
       {/if}
     </div>
-    <button class="btn p-1 me-1">
+    <button class="btn p-1 me-1" on:click>
       <img src="/icons/plus-circle.svg" alt="" class="img-fluid">
     </button>
   </div>
