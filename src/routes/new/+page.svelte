@@ -1,43 +1,66 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { goto } from "$app/navigation";
-// import { parseCreated } from "$lib/app";
 import { bluesky } from "$lib/bluesky";
 import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
-import type { FeedViewPost } from "@atproto/api/dist/client/types/app/bsky/feed/defs";
-import { onMount } from "svelte";
+import type { Post as PostType } from "$lib/types";
 
-let posts: FeedViewPost[] = [];
+let posts: PostType[];
 const init = async () => {
 	const result = bluesky.checkSession();
 	if (!result) {
 		goto("/login");
 	}
-	posts = await bluesky.getFollowingFeed(100);
+	const records = await bluesky.getFollowingFeed(100);
+  posts = records
+  .filter(r => "$type" in r.post.record && r.post.record.$type  === "app.bsky.feed.post")
+  .map(r => {
+    return {
+      avatar: r.post.author.avatar,
+      displayName: r.post.author.displayName,
+      handle: r.post.author.handle,
+      text: "text" in r.post.record ? r.post.record.text : "",
+      selected: false
+    }
+  });
 };
 if (browser) {
 	init();
 }
 
 // 投稿選択のデータ
-let selectedPosts = [
-  "今日の夕飯はカレーライス！作り置きしておいたルーを温めるだけで超楽チン😊 #料理 #時短レシピ",
-  "新しいカメラが届いた！これから色々な写真を撮るのが楽しみ。とりあえず窓から見える夕焼けを撮ってみた📸✨",
-  "気になってた本、やっと読み終わった。めちゃくちゃ面白かったけど、最後の展開は予想外だった…！",
-  "電車が遅延してて会社に遅刻しそう😱 今日に限って朝一から会議があるのに…",
-  "ついに新作ゲームの発売日！仕事終わりに買いに行くぞ🎮 積みゲー増えるけど気にしない（笑）",
-  "雨の予報だったのに急に晴れてきた☀️ 洗濯物が助かる〜",
-  "子供が初めて自転車に乗れるようになった！練習の成果が出て親としても嬉しい😆",
-  "今日のランチ、同僚と新しくできたパスタ屋さんに行ってきた🍝 ソースが絶品でリピ確定",
-  "深夜のコンビニでアイス買ってきた。明日の仕事のこと考えたら寝るべきなんだけどね…",
-  "最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！"
-]// 抽出された単語のデータ
-let extractedWords = [];
-// 選択された単語のデータ
-let selectedWords = [];
-// フィルター文字列
-let filterString = "";
+const selectedPosts = [
+	"今日の夕飯はカレーライス！作り置きしておいたルーを温めるだけで超楽チン😊 #料理 #時短レシピ",
+	"新しいカメラが届いた！これから色々な写真を撮るのが楽しみ。とりあえず窓から見える夕焼けを撮ってみた📸✨",
+	"気になってた本、やっと読み終わった。めちゃくちゃ面白かったけど、最後の展開は予想外だった…！",
+	"電車が遅延してて会社に遅刻しそう😱 今日に限って朝一から会議があるのに…",
+	"ついに新作ゲームの発売日！仕事終わりに買いに行くぞ🎮 積みゲー増えるけど気にしない（笑）",
+	"雨の予報だったのに急に晴れてきた☀️ 洗濯物が助かる〜",
+	"子供が初めて自転車に乗れるようになった！練習の成果が出て親としても嬉しい😆",
+	"今日のランチ、同僚と新しくできたパスタ屋さんに行ってきた🍝 ソースが絶品でリピ確定",
+	"深夜のコンビニでアイス買ってきた。明日の仕事のこと考えたら寝るべきなんだけどね…",
+	"最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！",
+]; // 抽出された単語のデータ
+const analyzedWords = [
+	{ word: "カレー", frequency: 1, partOfSpeech: "名詞", selected: false },
+	{ word: "料理", frequency: 2, partOfSpeech: "名詞", selected: false },
+	{ word: "カメラ", frequency: 1, partOfSpeech: "名詞", selected: false },
+	{ word: "写真", frequency: 1, partOfSpeech: "名詞", selected: false },
+	{ word: "本", frequency: 1, partOfSpeech: "名詞", selected: false },
+	{ word: "面白い", frequency: 1, partOfSpeech: "形容詞", selected: false },
+];
+
+// 正規表現のエスケープ処理
+function escapeRegExp(word: string): string {
+  return word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+// 選択された単語から正規表現フィルターを生成
+$: filter = analyzedWords
+  .filter(word => word.selected)
+  .map(word => `(${escapeRegExp(word.word)})`)
+  .join(' || ')
 </script>
 
 {#if posts}
@@ -63,9 +86,7 @@ let filterString = "";
           <div class="overflow-auto" style="max-height: 600px;">
             <div class="list-group p-2">
               {#each posts as post}
-                {#if post.post.record.$type === "app.bsky.feed.post"}
-                <Post {post}></Post>
-                {/if}
+              <Post {post}></Post>
               {/each}
             </div>
           </div>
@@ -108,16 +129,15 @@ let filterString = "";
         </div>
         <div class="card-body">
           <div class="overflow-auto" style="max-height: 300px;">
-            {#if extractedWords.length > 0}
-              <div class="d-flex flex-wrap gap-2">
-                <!-- 抽出された単語のリスト -->
-                <button class="btn btn-outline-primary btn-sm">
-                  単語サンプル
+            <div class="d-flex flex-wrap gap-2">
+              {#each analyzedWords as word}
+                <button class="btn btn-sm {word.selected ? "btn-primary": "btn-outline-primary"}" on:click={() => {word.selected = !word.selected}}>
+                  {word.word}
                 </button>
-              </div>
-            {:else}
-              <p class="text-muted">単語が抽出されていません</p>
-            {/if}
+              {:else}
+                <p class="text-muted">単語が抽出されていません</p>
+              {/each}
+            </div>
           </div>
         </div>
       </div>
@@ -131,17 +151,12 @@ let filterString = "";
         </div>
         <div class="card-body">
           <div class="mb-3">
-            <label class="form-label">選択した単語</label>
-            <div class="d-flex flex-wrap gap-2 mb-3">
-              {#each selectedWords as word}
-                <span class="badge bg-primary">{word}</span>
-              {/each}
-            </div>
             <label class="form-label">フィルター文字列</label>
-            <textarea 
-              class="form-control" 
-              rows="3" 
-              bind:value={filterString}
+            <textarea
+              class="form-control"
+              rows="3"
+              bind:value={filter}
+              readonly
               placeholder="フィルター文字列を入力または編集"
             ></textarea>
           </div>

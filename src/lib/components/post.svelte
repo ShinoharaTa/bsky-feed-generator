@@ -1,15 +1,14 @@
 <script lang="ts">
-import type { FeedViewPost } from "@atproto/api/dist/client/types/app/bsky/feed/defs";
-
-export let post: FeedViewPost;
+import type { Post } from "$lib/types";
+export let post: Post;
 </script>
 
 <article class="card p-2 mb-2">
 {#if post}
   <div class="d-flex align-items-center">
     <div>
-      {#if post.post.author.avatar}
-        <img src="{post.post.author.avatar}" alt="" class="avatar">
+      {#if post.avatar}
+        <img src="{post.avatar}" alt="" class="avatar">
       {:else}
         <div class="avatar default">
           <img src="/icons/man.svg" alt="" class="inner-icon">
@@ -17,16 +16,16 @@ export let post: FeedViewPost;
       {/if}
     </div>
     <div class="flex-fill ms-2">
-      {#if post.post.author.displayName}
+      {#if post.displayName}
       <div class="name">
-        {post.post.author.displayName}
+        {post.displayName}
       </div>
       <div class="handle">
-        @{post.post.author.handle}
+        @{post.handle}
       </div>
       {:else}
       <div class="name">
-        @{post.post.author.handle}
+        @{post.handle}
       </div>
       {/if}
     </div>
@@ -35,13 +34,7 @@ export let post: FeedViewPost;
     </button>
   </div>
   <div class="feed_text mt-1">
-    {#if post.post.record.$type === "app.bsky.feed.post"}
-      {post.post.record.text}
-    {:else if false}
-    <!-- else if content here -->
-    {:else}
-    <!-- else content here -->
-    {/if}
+    {post.text}
   </div>
 {/if}
 </article>
