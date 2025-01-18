@@ -84,11 +84,6 @@ async function analyzePosts() {
 					selected: false,
 				},
 			];
-			// analyzedWords.push({
-			// 	word: item[0],
-			// 	partOfSpeech: item[1],
-			// 	selected: false,
-			// });
 		});
 	}
 }
