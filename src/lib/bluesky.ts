@@ -1,4 +1,5 @@
 import { browser } from '$app/environment'
+import { goto } from '$app/navigation'
 import { AtpAgent } from '@atproto/api'
 import type { AtpSessionData} from '@atproto/api'
 import { writable, type Writable } from 'svelte/store'
@@ -35,11 +36,10 @@ export class Bluesky {
 
   private async initializeSession(): Promise<boolean> {
     if (!browser) return false
-
     try {
       const savedSession = localStorage.getItem('bsky-session')
       if (!savedSession) {
-        return false
+        throw new Error("Session Nothing.")
       }
 
       const session = JSON.parse(savedSession) as AtpSessionData
@@ -49,17 +49,18 @@ export class Bluesky {
         isLoggedIn: true,
         handle: this.agent.session?.handle
       })
-
       return true
     } catch (error) {
       console.error('Session initialization error:', error)
       localStorage.removeItem('bsky-session')
+      await this.agent.logout()
 
       this.sessionStore.set({
         isLoggedIn: false,
         error: error instanceof Error ? error.message : 'Session initialization failed'
       })
 
+      goto("/login")
       return false
     }
   }
@@ -106,7 +107,7 @@ export class Bluesky {
     }
   }
 
-  checkSession(): boolean {
+  async checkSession(): boolean {
     if (!browser) return true;
     return this.agent.session !== null
   }

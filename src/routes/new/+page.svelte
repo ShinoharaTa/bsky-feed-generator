@@ -11,6 +11,7 @@ import { MemberAlreadyExistsError } from "@atproto/api/dist/client/types/tools/o
 let posts: PostType[] = [];
 const init = async () => {
 	const result = bluesky.checkSession();
+  console.log(result)
 	if (!result) {
 		goto("/login");
 	}
