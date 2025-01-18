@@ -4,7 +4,9 @@ import { goto } from "$app/navigation";
 import { bluesky } from "$lib/bluesky";
 import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
+import { analyze } from "$lib/feed";
 import type { Post as PostType } from "$lib/types";
+import { MemberAlreadyExistsError } from "@atproto/api/dist/client/types/tools/ozone/team/addMember";
 
 let posts: PostType[] = [];
 const init = async () => {
@@ -48,12 +50,12 @@ let selectedPosts: string[] = [
 	"最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！",
 ]; // 抽出された単語のデータ
 const analyzedWords = [
-	{ word: "カレー", frequency: 1, partOfSpeech: "名詞", selected: false },
-	{ word: "料理", frequency: 2, partOfSpeech: "名詞", selected: false },
-	{ word: "カメラ", frequency: 1, partOfSpeech: "名詞", selected: false },
-	{ word: "写真", frequency: 1, partOfSpeech: "名詞", selected: false },
-	{ word: "本", frequency: 1, partOfSpeech: "名詞", selected: false },
-	{ word: "面白い", frequency: 1, partOfSpeech: "形容詞", selected: false },
+	{ word: "カレー", partOfSpeech: "名詞", selected: false },
+	{ word: "料理", partOfSpeech: "名詞", selected: false },
+	{ word: "カメラ", partOfSpeech: "名詞", selected: false },
+	{ word: "写真", partOfSpeech: "名詞", selected: false },
+	{ word: "本", partOfSpeech: "名詞", selected: false },
+	{ word: "面白い", partOfSpeech: "形容詞", selected: false },
 ];
 
 // 正規表現のエスケープ処理
@@ -66,139 +68,162 @@ $: filter = analyzedWords
 	.filter((word) => word.selected)
 	.map((word) => `(${escapeRegExp(word.word)})`)
 	.join(" || ");
+
+async function analyzePosts() {
+	const data = await analyze(selectedPosts.join(","));
+	console.log(data);
+}
 </script>
 
 {#if posts}
-<div class="container-fluid py-3">
-  <!-- ヘッダー -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="bg-primary text-white p-3 rounded">
-        <h1 class="h4 mb-0">Bluesky フィード作成</h1>
+  <div class="container-fluid py-3">
+    <!-- ヘッダー -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="bg-primary text-white p-3 rounded">
+          <h1 class="h4 mb-0">Bluesky フィード作成</h1>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Step 1 & 2: 投稿選択と選択済み投稿 -->
-  <div class="row mb-3 g-2">
-    <!-- 投稿選択 -->
-    <div class="col-12 col-md-6">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Step 1: 投稿を選択</h2>
+    <!-- Step 1 & 2: 投稿選択と選択済み投稿 -->
+    <div class="row mb-3 g-2">
+      <!-- 投稿選択 -->
+      <div class="col-12 col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Step 1: 投稿を選択</h2>
+          </div>
+          <div class="card-body p-0">
+            <div class="overflow-auto" style="max-height: 600px;">
+              <div class="list-group p-2">
+                {#each posts as post}
+                  <Post
+                    {post}
+                    on:click={() => {
+                      selectedPosts = [...selectedPosts, post.text!];
+                    }}
+                  ></Post>
+                {/each}
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card-body p-0">
-          <div class="overflow-auto" style="max-height: 600px;">
-            <div class="list-group p-2">
-              {#each posts as post}
-              <Post {post} on:click={() => { selectedPosts = [...selectedPosts, post.text!]}}></Post>
-              {/each}
+      </div>
+
+      <!-- 選択済み投稿 -->
+      <div class="col-12 col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Step 2: 選択した投稿を確認</h2>
+          </div>
+          <div class="card-body p-0">
+            <div class="overflow-auto" style="max-height: 600px;">
+              <div class="list-group p-2">
+                {#each [...selectedPosts].reverse() as post, index}
+                  <SelectedPost
+                    {post}
+                    on:click={() => {
+                      const actualIndex = selectedPosts.length - 1 - index;
+                      selectedPosts = selectedPosts.filter(
+                        (_, i) => i !== actualIndex,
+                      );
+                    }}
+                  ></SelectedPost>
+                {:else}
+                  <p class="text-muted">投稿が選択されていません</p>
+                {/each}
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 選択済み投稿 -->
-    <div class="col-12 col-md-6">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Step 2: 選択した投稿を確認</h2>
+    <div class="text-center mb-3">
+      <button class="btn btn-lg btn-primary w-50" on:click={analyzePosts}
+        >単語を抽出</button
+      >
+    </div>
+
+    <!-- Step 3 & 4: 単語選択とフィルター作成 -->
+    <div class="row mb-3 g-2">
+      <!-- 単語選択 -->
+      <div class="col-12 col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Step 3: 単語を選択</h2>
+          </div>
+          <div class="card-body">
+            <div class="overflow-auto" style="max-height: 300px;">
+              <div class="d-flex flex-wrap gap-2">
+                {#each analyzedWords as word}
+                  <button
+                    class="btn btn-sm {word.selected
+                      ? 'btn-primary'
+                      : 'btn-outline-primary'}"
+                    on:click={() => {
+                      word.selected = !word.selected;
+                    }}
+                  >
+                    {word.word}
+                  </button>
+                {:else}
+                  <p class="text-muted">単語が抽出されていません</p>
+                {/each}
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card-body p-0">
-          <div class="overflow-auto" style="max-height: 600px;">
-            <div class="list-group p-2">
-              {#each [...selectedPosts].reverse() as post, index}
-              <SelectedPost {post}
-                on:click={() => {
-                  const actualIndex = selectedPosts.length - 1 - index
-                  selectedPosts = selectedPosts.filter((_, i) => i !== actualIndex)
-                }}></SelectedPost>
-              {:else}
-                <p class="text-muted">投稿が選択されていません</p>
-              {/each}
+      </div>
+
+      <!-- フィルター作成 -->
+      <div class="col-12 col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Step 4: フィルターを作成</h2>
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">フィルター文字列</label>
+              <textarea
+                class="form-control"
+                rows="3"
+                bind:value={filter}
+                readonly
+                placeholder="フィルター文字列を入力または編集"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: プレビューと保存 -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header bg-primary text-white">
+            <h2 class="h5 mb-0">Step 5: プレビューと保存</h2>
+          </div>
+          <div class="card-body">
+            <div class="mb-4">
+              <h3 class="h6">プレビュー</h3>
+              <div class="border rounded p-3 mb-3">
+                <!-- プレビューコンテンツ -->
+                <p class="text-muted">フィルター適用結果のプレビュー</p>
+              </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-secondary">キャンセル</button>
+              <button class="btn btn-primary">保存</button>
+              <button class="btn btn-success">公開</button>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <div class="text-center mb-3">
-    <button class="btn btn-lg btn-primary w-50">単語を抽出</button>
-  </div>
-
-<!-- Step 3 & 4: 単語選択とフィルター作成 -->
-  <div class="row mb-3 g-2">
-    <!-- 単語選択 -->
-    <div class="col-12 col-md-6">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Step 3: 単語を選択</h2>
-        </div>
-        <div class="card-body">
-          <div class="overflow-auto" style="max-height: 300px;">
-            <div class="d-flex flex-wrap gap-2">
-              {#each analyzedWords as word}
-                <button class="btn btn-sm {word.selected ? "btn-primary": "btn-outline-primary"}" on:click={() => {word.selected = !word.selected}}>
-                  {word.word}
-                </button>
-              {:else}
-                <p class="text-muted">単語が抽出されていません</p>
-              {/each}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- フィルター作成 -->
-    <div class="col-12 col-md-6">
-      <div class="card h-100">
-        <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Step 4: フィルターを作成</h2>
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">フィルター文字列</label>
-            <textarea
-              class="form-control"
-              rows="3"
-              bind:value={filter}
-              readonly
-              placeholder="フィルター文字列を入力または編集"
-            ></textarea>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Step 5: プレビューと保存 -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header bg-primary text-white">
-          <h2 class="h5 mb-0">Step 5: プレビューと保存</h2>
-        </div>
-        <div class="card-body">
-          <div class="mb-4">
-            <h3 class="h6">プレビュー</h3>
-            <div class="border rounded p-3 mb-3">
-              <!-- プレビューコンテンツ -->
-              <p class="text-muted">フィルター適用結果のプレビュー</p>
-            </div>
-          </div>
-          <div class="d-flex justify-content-end gap-2">
-            <button class="btn btn-secondary">キャンセル</button>
-            <button class="btn btn-primary">保存</button>
-            <button class="btn btn-success">公開</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 {/if}
 
 <style>
