@@ -51,7 +51,7 @@ let selectedPosts: string[] = [
 	"深夜のコンビニでアイス買ってきた。明日の仕事のこと考えたら寝るべきなんだけどね…",
 	"最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！",
 ]; // 抽出された単語のデータ
-$: analyzedWords = [
+let analyzedWords: { word: string; partOfSpeech: string; selected: boolean }[] = [
 	{ word: "カレー", partOfSpeech: "名詞", selected: false },
 	{ word: "料理", partOfSpeech: "名詞", selected: false },
 	{ word: "カメラ", partOfSpeech: "名詞", selected: false },
@@ -76,14 +76,16 @@ async function analyzePosts() {
 	console.log(data);
 	if (data.result === "ok") {
 		data.token.map((item) => {
-			analyzedWords = [
-				...analyzedWords,
-				{
-					word: item[0],
-					partOfSpeech: item[1],
-					selected: false,
-				},
-			];
+      if(item[0].trim()){
+        analyzedWords = [
+          ...analyzedWords,
+          {
+            word: item[0],
+            partOfSpeech: item[1],
+            selected: false,
+          },
+        ];
+      }
 		});
 	}
 }
