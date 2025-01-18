@@ -6,12 +6,13 @@ import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
 import { analyze } from "$lib/feed";
 import type { Post as PostType } from "$lib/types";
+import { RepoSuspendedError } from "@atproto/api/dist/client/types/com/atproto/sync/getBlob";
 import { MemberAlreadyExistsError } from "@atproto/api/dist/client/types/tools/ozone/team/addMember";
 
 let posts: PostType[] = [];
 const init = async () => {
 	const result = bluesky.checkSession();
-  console.log(result)
+	console.log(result);
 	if (!result) {
 		goto("/login");
 	}
@@ -50,7 +51,7 @@ let selectedPosts: string[] = [
 	"深夜のコンビニでアイス買ってきた。明日の仕事のこと考えたら寝るべきなんだけどね…",
 	"最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！",
 ]; // 抽出された単語のデータ
-const analyzedWords = [
+$: analyzedWords = [
 	{ word: "カレー", partOfSpeech: "名詞", selected: false },
 	{ word: "料理", partOfSpeech: "名詞", selected: false },
 	{ word: "カメラ", partOfSpeech: "名詞", selected: false },
@@ -73,6 +74,23 @@ $: filter = analyzedWords
 async function analyzePosts() {
 	const data = await analyze(selectedPosts.join(","));
 	console.log(data);
+	if (data.result === "ok") {
+		data.token.map((item) => {
+			analyzedWords = [
+				...analyzedWords,
+				{
+					word: item[0],
+					partOfSpeech: item[1],
+					selected: false,
+				},
+			];
+			// analyzedWords.push({
+			// 	word: item[0],
+			// 	partOfSpeech: item[1],
+			// 	selected: false,
+			// });
+		});
+	}
 }
 </script>
 
