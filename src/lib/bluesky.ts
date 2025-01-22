@@ -2,18 +2,22 @@ import { browser } from '$app/environment'
 import { goto } from '$app/navigation'
 import { AtpAgent } from '@atproto/api'
 import type { AtpSessionData} from '@atproto/api'
-import { writable, type Writable } from 'svelte/store'
+import { get, writable, type Writable } from 'svelte/store'
 
 export interface SessionState {
-  isLoggedIn: boolean
-  handle?: string
-  error?: string
+  did: string | null
+  handle: string | null
+}
+
+const initSessionState = {
+  did: null,
+  handle: null,
 }
 
 export class Bluesky {
   private agent: AtpAgent
   public sessionStore: Writable<SessionState>
-  private initializationPromise: Promise<boolean>
+  public initializationPromise: Promise<boolean>
 
   constructor() {
     this.agent = new AtpAgent({
@@ -28,9 +32,7 @@ export class Bluesky {
       }
     })
 
-    this.sessionStore = writable({
-      isLoggedIn: false
-    })
+    this.sessionStore = writable(initSessionState)
     this.initializationPromise = this.initializeSession()
   }
 
@@ -38,16 +40,15 @@ export class Bluesky {
     if (!browser) return false
     try {
       const savedSession = localStorage.getItem('bsky-session')
-      if (!savedSession) {
-        throw new Error("Session Nothing.")
-      }
+      if (!savedSession) throw new Error("Session Nothing.");
 
       const session = JSON.parse(savedSession) as AtpSessionData
-      await this.agent.resumeSession(session)
-
+      const result = await this.agent.resumeSession(session)
+      console.log(result.data)
+      if(!result.success) throw new Error("Session Expired.");
       this.sessionStore.set({
-        isLoggedIn: true,
-        handle: this.agent.session?.handle
+        did: result.data.did,
+        handle: result.data.handle
       })
       return true
     } catch (error) {
@@ -55,10 +56,7 @@ export class Bluesky {
       localStorage.removeItem('bsky-session')
       await this.agent.logout()
 
-      this.sessionStore.set({
-        isLoggedIn: false,
-        error: error instanceof Error ? error.message : 'Session initialization failed'
-      })
+      this.sessionStore.set(initSessionState)
 
       goto("/login")
       return false
@@ -67,14 +65,14 @@ export class Bluesky {
 
   async login(identifier: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      await this.agent.login({
+      const result = await this.agent.login({
         identifier,
         password
       })
-
+      if(!result.success) throw new Error("Login failed")
       this.sessionStore.set({
-        isLoggedIn: true,
-        handle: this.agent.session?.handle
+        did: result.data.did,
+        handle: result.data.handle
       })
 
       return { success: true }
@@ -82,10 +80,7 @@ export class Bluesky {
       console.error('Login error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Login failed'
 
-      this.sessionStore.set({
-        isLoggedIn: false,
-        error: errorMessage
-      })
+      this.sessionStore.set(initSessionState)
 
       return {
         success: false,
@@ -99,15 +94,13 @@ export class Bluesky {
     try {
       localStorage.removeItem('bsky-session')
       await this.agent.logout()
-      this.sessionStore.set({
-        isLoggedIn: false
-      })
+      this.sessionStore.set(initSessionState)
     } catch (error) {
       console.error('Logout error:', error)
     }
   }
 
-  async checkSession(): boolean {
+  checkSession(): boolean {
     if (!browser) return true;
     return this.agent.session !== null
   }
@@ -121,13 +114,31 @@ export class Bluesky {
   async getFollowingFeed(limit = 50) {
     try {
       const response = await this.agent.getTimeline({
-        limit: limit
+        limit
       })
       return response.data.feed
     } catch (error) {
       console.error('Feed error:', error)
       throw error
     }
+  }
+
+  async getActorFeed(limit = 50) {
+    const session = get(this.sessionStore)
+    console.log(session)
+    if(!session.did) throw new Error("Nothing did");
+    const response = await this.agent.app.bsky.feed.getActorFeeds({actor: session.did, limit})
+    console.log(response)
+    return response.data.feeds
+    // try {
+    //   const response = await this.agent.getTimeline({
+    //     limit: limit
+    //   })
+    //   return response.data.feed
+    // } catch (error) {
+    //   console.error('Feed error:', error)
+    //   throw error
+    // }
   }
 }
 
