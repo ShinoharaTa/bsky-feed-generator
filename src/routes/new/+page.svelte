@@ -38,6 +38,8 @@ if (browser) {
 	init();
 }
 
+let condition: "OR" | "AND" = "OR";
+
 // 投稿選択のデータ
 let selectedPosts: string[] = [
 	"今日の夕飯はカレーライス！作り置きしておいたルーを温めるだけで超楽チン😊 #料理 #時短レシピ",
@@ -51,14 +53,15 @@ let selectedPosts: string[] = [
 	"深夜のコンビニでアイス買ってきた。明日の仕事のこと考えたら寝るべきなんだけどね…",
 	"最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！",
 ]; // 抽出された単語のデータ
-let analyzedWords: { word: string; partOfSpeech: string; selected: boolean }[] = [
-	{ word: "カレー", partOfSpeech: "名詞", selected: false },
-	{ word: "料理", partOfSpeech: "名詞", selected: false },
-	{ word: "カメラ", partOfSpeech: "名詞", selected: false },
-	{ word: "写真", partOfSpeech: "名詞", selected: false },
-	{ word: "本", partOfSpeech: "名詞", selected: false },
-	{ word: "面白い", partOfSpeech: "形容詞", selected: false },
-];
+let analyzedWords: { word: string; partOfSpeech: string; selected: boolean }[] =
+	[
+		{ word: "カレー", partOfSpeech: "名詞", selected: false },
+		{ word: "料理", partOfSpeech: "名詞", selected: false },
+		{ word: "カメラ", partOfSpeech: "名詞", selected: false },
+		{ word: "写真", partOfSpeech: "名詞", selected: false },
+		{ word: "本", partOfSpeech: "名詞", selected: false },
+		{ word: "面白い", partOfSpeech: "形容詞", selected: false },
+	];
 
 // 正規表現のエスケープ処理
 function escapeRegExp(word: string): string {
@@ -68,24 +71,24 @@ function escapeRegExp(word: string): string {
 // 選択された単語から正規表現フィルターを生成
 $: filter = analyzedWords
 	.filter((word) => word.selected)
-	.map((word) => `(${escapeRegExp(word.word)})`)
-	.join(" || ");
+	.map((word) => `WORD(${escapeRegExp(word.word)})`)
+	.join(condition === "OR" ? " || " : " && ");
 
 async function analyzePosts() {
 	const data = await analyze(selectedPosts.join(","));
 	console.log(data);
 	if (data.result === "ok") {
 		data.token.map((item) => {
-      if(item[0].trim()){
-        analyzedWords = [
-          ...analyzedWords,
-          {
-            word: item[0],
-            partOfSpeech: item[1],
-            selected: false,
-          },
-        ];
-      }
+			if (item[0].trim()) {
+				analyzedWords = [
+					...analyzedWords,
+					{
+						word: item[0],
+						partOfSpeech: item[1],
+						selected: false,
+					},
+				];
+			}
 		});
 	}
 }
@@ -201,13 +204,21 @@ async function analyzePosts() {
           </div>
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label">フィルター文字列</label>
+              <div class="form-label">フィルター条件プレビュー</div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="condition" id="or-condition" value="OR" bind:group={condition}>
+                <label class="form-check-label" for="or-condition">【単語】をいずれか含む</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="condition" id="and-condition" value="AND" bind:group={condition}>
+                <label class="form-check-label" for="and-condition">【単語】をすべて含む</label>
+              </div>
               <textarea
                 class="form-control"
                 rows="3"
                 bind:value={filter}
                 readonly
-                placeholder="フィルター文字列を入力または編集"
+                placeholder="プレビュー"
               ></textarea>
             </div>
           </div>
