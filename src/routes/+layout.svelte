@@ -19,7 +19,7 @@
 </script>
 
 <div class="h-min-100vh">
-  <div class="max-width">
+  <div class="container">
     <slot />
   </div>
   <footer>
@@ -38,9 +38,8 @@
     display: flex;
     flex-direction: column;
   }
-  .max-width {
+  .container {
     max-width: 960px;
-    align-self: center;
   }
   footer {
     margin-top: auto;
