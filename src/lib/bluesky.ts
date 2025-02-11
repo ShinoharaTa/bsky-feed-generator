@@ -2,6 +2,8 @@ import { browser } from '$app/environment'
 import { goto } from '$app/navigation'
 import { AtpAgent } from '@atproto/api'
 import type { AtpSessionData} from '@atproto/api'
+import type { InputSchema } from '@atproto/api/dist/client/types/com/atproto/repo/putRecord'
+import { formatISO } from 'date-fns'
 import { get, writable, type Writable } from 'svelte/store'
 
 export interface SessionState {
@@ -105,10 +107,12 @@ export class Bluesky {
     return this.agent.session !== null
   }
 
-  // // APIリクエストのためのメソッドを追加
-  // getAgent(): AtpAgent {
-  //   return this.agent
-  // }
+  getHandle() {
+    const session = get(this.sessionStore)
+    console.log(session)
+    if(!session.handle) throw new Error("Nothing handle");
+    return session.handle
+  }
 
   // フォローしているユーザーの投稿を取得
   async getFollowingFeed(limit = 50) {
@@ -130,15 +134,48 @@ export class Bluesky {
     const response = await this.agent.app.bsky.feed.getActorFeeds({actor: session.did, limit})
     console.log(response)
     return response.data.feeds
-    // try {
-    //   const response = await this.agent.getTimeline({
-    //     limit: limit
-    //   })
-    //   return response.data.feed
-    // } catch (error) {
-    //   console.error('Feed error:', error)
-    //   throw error
-    // }
+  }
+
+  async publishFeed (params: {rkey: string, displayName: string, description?: string, tag: string}) {
+    const session = get(this.sessionStore)
+    console.log(session)
+    if(!session.did) throw new Error("Nothing did");
+    const data: InputSchema = {
+      "repo": session.did,
+      "collection": "app.bsky.feed.generator",
+      "rkey": params.rkey,
+      "record": {
+        "did": "did:web:bluefeed.shino3.net",
+        "displayName": params.displayName,
+        "description": params.description ?? "",
+        "descriptionFacets": [
+          {
+            "index": {
+              "byteStart": 0,
+              "byteEnd": 1
+            },
+            "features": [
+              {
+                "$type": "app.bsky.richtext.facet#tag",
+                "tag": params.tag
+              }
+            ]
+          }
+        ],
+        "createdAt": formatISO(new Date()),
+        "avatar": {
+          "$type": "blob",
+          "ref": {
+            "$link": "bafkreia255znk7fhgbodnn25lh5zc3leyqzf53gf6yci633zddosesvdkm"
+          },
+          "mimeType": "image/png",
+          "size": 144531
+        }
+      }
+    }
+    const result = await this.agent.com.atproto.repo.putRecord(data)
+    if(!result.success) throw new Error("Failed publish record.");
+    return result.data
   }
 }
 

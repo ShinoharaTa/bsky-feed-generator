@@ -4,10 +4,17 @@ import { goto } from "$app/navigation";
 import { bluesky } from "$lib/bluesky";
 import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
-import { analyze } from "$lib/feed";
+import { analyze, getTag, registerFeed } from "$lib/feed";
 import type { Post as PostType } from "$lib/types";
 import { RepoSuspendedError } from "@atproto/api/dist/client/types/com/atproto/sync/getBlob";
 import { MemberAlreadyExistsError } from "@atproto/api/dist/client/types/tools/ozone/team/addMember";
+
+let condition: "OR" | "AND" = "OR";
+let rkey = "12345678";
+let displayName = "dispName";
+let description = "";
+
+const secret = "S2PcKDxqzXgJdJwv01v3s2Qr"
 
 let posts: PostType[] = [];
 const init = async () => {
@@ -37,8 +44,6 @@ const init = async () => {
 if (browser) {
 	init();
 }
-
-let condition: "OR" | "AND" = "OR";
 
 // 投稿選択のデータ
 let selectedPosts: string[] = [
@@ -91,6 +96,24 @@ async function analyzePosts() {
 			}
 		});
 	}
+}
+
+async function publish() {
+	const tag = await getTag(rkey, bluesky.getHandle(), secret);
+	const publishResult = await bluesky.publishFeed({
+		rkey: rkey,
+		displayName: displayName,
+    tag
+	});
+	if (!publishResult) return;
+	await registerFeed({
+		rkey: rkey,
+		handle: bluesky.getHandle(),
+		display_name: displayName,
+		description: description,
+		condition: filter,
+    secret: secret
+  });
 }
 </script>
 
@@ -244,7 +267,7 @@ async function analyzePosts() {
             <div class="d-flex justify-content-end gap-2">
               <button class="btn btn-secondary">キャンセル</button>
               <button class="btn btn-primary">保存</button>
-              <button class="btn btn-success">公開</button>
+              <button class="btn btn-success" on:click={publish}>公開</button>
             </div>
           </div>
         </div>
