@@ -163,14 +163,14 @@ export class Bluesky {
           }
         ],
         "createdAt": formatISO(new Date()),
-        "avatar": {
-          "$type": "blob",
-          "ref": {
-            "$link": "bafkreia255znk7fhgbodnn25lh5zc3leyqzf53gf6yci633zddosesvdkm"
-          },
-          "mimeType": "image/png",
-          "size": 144531
-        }
+        // "avatar": {
+        //   "$type": "blob",
+        //   "ref": {
+        //     "$link": "bafkreia255znk7fhgbodnn25lh5zc3leyqzf53gf6yci633zddosesvdkm"
+        //   },
+        //   "mimeType": "image/png",
+        //   "size": 144531
+        // }
       }
     }
     const result = await this.agent.com.atproto.repo.putRecord(data)

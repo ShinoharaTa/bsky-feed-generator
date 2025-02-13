@@ -4,18 +4,17 @@ import { goto } from "$app/navigation";
 import { bluesky } from "$lib/bluesky";
 import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
-import { analyze, getTag, registerFeed } from "$lib/feed";
+import { analyze, getTag, registerFeed, generateRandomString } from "$lib/feed";
 import type { Post as PostType } from "$lib/types";
-import { RepoSuspendedError } from "@atproto/api/dist/client/types/com/atproto/sync/getBlob";
-import { MemberAlreadyExistsError } from "@atproto/api/dist/client/types/tools/ozone/team/addMember";
 
 let condition: "OR" | "AND" = "OR";
 let rkey = "12345678";
 let displayName = "dispName";
 let description = "";
+let inProgress = false;
 
-const secret = "S2PcKDxqzXgJdJwv01v3s2Qr"
-
+const secret = generateRandomString();
+console.log(secret);
 let posts: PostType[] = [];
 const init = async () => {
 	const result = bluesky.checkSession();
@@ -24,6 +23,7 @@ const init = async () => {
 		goto("/login");
 	}
 	const records = await bluesky.getFollowingFeed(100);
+	handle = bluesky.getHandle();
 	posts = records
 		.filter(
 			(r) =>
@@ -79,6 +79,8 @@ $: filter = analyzedWords
 	.map((word) => `WORD(${escapeRegExp(word.word)})`)
 	.join(condition === "OR" ? " || " : " && ");
 
+$: handle = "";
+
 async function analyzePosts() {
 	const data = await analyze(selectedPosts.join(","));
 	console.log(data);
@@ -99,21 +101,26 @@ async function analyzePosts() {
 }
 
 async function publish() {
+	inProgress = true;
 	const tag = await getTag(rkey, bluesky.getHandle(), secret);
 	const publishResult = await bluesky.publishFeed({
 		rkey: rkey,
 		displayName: displayName,
-    tag
+		tag,
 	});
-	if (!publishResult) return;
+	if (!publishResult) {
+		inProgress = false;
+		return;
+	}
 	await registerFeed({
 		rkey: rkey,
 		handle: bluesky.getHandle(),
 		display_name: displayName,
 		description: description,
 		condition: filter,
-    secret: secret
-  });
+		secret: secret,
+	});
+	inProgress = false;
 }
 </script>
 
@@ -191,7 +198,7 @@ async function publish() {
     <!-- Step 3 & 4: 単語選択とフィルター作成 -->
     <div class="row mb-3 g-2">
       <!-- 単語選択 -->
-      <div class="col-12 col-md-6">
+      <div class="col-12">
         <div class="card h-100">
           <div class="card-header bg-primary text-white">
             <h2 class="h5 mb-0">Step 3: 単語を選択</h2>
@@ -220,7 +227,7 @@ async function publish() {
       </div>
 
       <!-- フィルター作成 -->
-      <div class="col-12 col-md-6">
+      <div class="col-12">
         <div class="card h-100">
           <div class="card-header bg-primary text-white">
             <h2 class="h5 mb-0">Step 4: フィルターを作成</h2>
@@ -254,20 +261,35 @@ async function publish() {
       <div class="col-12">
         <div class="card">
           <div class="card-header bg-primary text-white">
-            <h2 class="h5 mb-0">Step 5: プレビューと保存</h2>
+            <h2 class="h5 mb-0">Step 5: 保存設定をする</h2>
           </div>
           <div class="card-body">
-            <div class="mb-4">
-              <h3 class="h6">プレビュー</h3>
-              <div class="border rounded p-3 mb-3">
-                <!-- プレビューコンテンツ -->
-                <p class="text-muted">フィルター適用結果のプレビュー</p>
+            <div class="mb-3 row">
+              <label class="col-md-2 col-form-label" for="">パス設定</label>
+              <div class="col-md-10 row g-0 px-3 align-items-center">
+                <div class="col-auto">
+                  <label for="" class="col-form-label">https://bsky.app/profile/{handle}/feed/</label>
+                </div>
+                <div class="col-auto">
+                  <input type="text" class="form-control" value={rkey} placeholder="salmon-check">
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3 row">
+              <label class="col-md-2 col-form-label" for="">表示名</label>
+              <div class="col-md-10">
+                <input type="text" class="form-control" bind:value={displayName} placeholder="例：サーモン単語アラート">
+              </div>
+            </div>
+            <div class="mb-3 row">
+              <label class="col-md-2 col-form-label" for="">詳細</label>
+              <div class="col-md-10">
+                <textarea class="form-control" bind:value={description} placeholder="フィードの説明をココに記載します"></textarea>
               </div>
             </div>
             <div class="d-flex justify-content-end gap-2">
-              <button class="btn btn-secondary">キャンセル</button>
-              <button class="btn btn-primary">保存</button>
-              <button class="btn btn-success" on:click={publish}>公開</button>
+              <button class="btn btn-primary" on:click={publish} disabled={!filter || !displayName || !rkey || inProgress}>公開</button>
             </div>
           </div>
         </div>
