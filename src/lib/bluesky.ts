@@ -145,7 +145,7 @@ export class Bluesky {
       "collection": "app.bsky.feed.generator",
       "rkey": params.rkey,
       "record": {
-        "did": "did:web:bluefeed.shino3.net",
+        "did": "did:web:customfeed.shigepon.net",
         "displayName": params.displayName,
         "description": params.description ?? "",
         "descriptionFacets": [
@@ -163,14 +163,6 @@ export class Bluesky {
           }
         ],
         "createdAt": formatISO(new Date()),
-        // "avatar": {
-        //   "$type": "blob",
-        //   "ref": {
-        //     "$link": "bafkreia255znk7fhgbodnn25lh5zc3leyqzf53gf6yci633zddosesvdkm"
-        //   },
-        //   "mimeType": "image/png",
-        //   "size": 144531
-        // }
       }
     }
     const result = await this.agent.com.atproto.repo.putRecord(data)
@@ -181,20 +173,3 @@ export class Bluesky {
 
 // シングルトンインスタンスとしてエクスポート
 export const bluesky = new Bluesky()
-
-// カスタムフィードの作成
-// export async function createCustomFeed(name, description, filter) {
-//   try {
-//     // 実際のフィード作成APIを呼び出す
-//     // 注: APIの詳細仕様に応じて実装を調整する必要があります
-//     const response = await agent.api.app.bsky.feed.generator.create({
-//       name,
-//       description,
-//       filter
-//     })
-//     return response
-//   } catch (error) {
-//     console.error('Create feed error:', error)
-//     throw error
-//   }
-// }

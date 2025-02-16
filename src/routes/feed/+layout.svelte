@@ -1,17 +1,22 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import { goto } from "$app/navigation";
+import { page } from "$app/stores";
 import { bluesky } from "$lib/bluesky";
 import Post from "$lib/components/post.svelte";
 import SelectedPost from "$lib/components/selectedPost.svelte";
 import { analyze, getTag, registerFeed, generateRandomString } from "$lib/feed";
 import type { Post as PostType } from "$lib/types";
 
+const id = $page.params.id;
+console.log(id);
+
 let condition: "OR" | "AND" = "OR";
-let rkey = "12345678";
-let displayName = "dispName";
+let rkey = "";
+let displayName = "";
 let description = "";
 let inProgress = false;
+let addWord = "";
 
 const secret = generateRandomString();
 console.log(secret);
@@ -58,6 +63,7 @@ let selectedPosts: string[] = [
 	"深夜のコンビニでアイス買ってきた。明日の仕事のこと考えたら寝るべきなんだけどね…",
 	"最近始めたヨガ、体が柔らかくなってきた気がする🧘‍♀️ 継続は力なり！",
 ]; // 抽出された単語のデータ
+let analyzedWordsFilter: string[] = ["名詞"];
 let analyzedWords: { word: string; partOfSpeech: string; selected: boolean }[] =
 	[
 		{ word: "カレー", partOfSpeech: "名詞", selected: false },
@@ -68,14 +74,24 @@ let analyzedWords: { word: string; partOfSpeech: string; selected: boolean }[] =
 		{ word: "面白い", partOfSpeech: "形容詞", selected: false },
 	];
 
+let addWords: { word: string; selected: boolean }[] = [];
+
 // 正規表現のエスケープ処理
 function escapeRegExp(word: string): string {
 	return word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const addWordItem = () => {
+	if (!addWord) return;
+	addWords = [...addWords, { word: addWord, selected: false }];
+	addWord = "";
+}
+
 // 選択された単語から正規表現フィルターを生成
-$: filter = analyzedWords
-	.filter((word) => word.selected)
+$: filter = [
+	...analyzedWords.filter((word) => word.selected),
+	...addWords.filter((word) => word.selected),
+]
 	.map((word) => `WORD(${escapeRegExp(word.word)})`)
 	.join(condition === "OR" ? " || " : " && ");
 
@@ -204,9 +220,27 @@ async function publish() {
             <h2 class="h5 mb-0">Step 3: 単語を選択</h2>
           </div>
           <div class="card-body">
-            <div class="overflow-auto" style="max-height: 300px;">
+            <div class="d-flex mb-3">
+              <div class="me-3">
+                <input type="checkbox" class="form-check-input" name="名詞" id="filter_名詞" bind:group={analyzedWordsFilter} value="名詞">
+                <label for="filter_名詞" class="form-check-label" >名詞</label>
+              </div>
+              <div class="me-3">
+                <input type="checkbox" class="form-check-input" name="動詞" id="filter_動詞" bind:group={analyzedWordsFilter} value="動詞">
+                <label for="filter_動詞" class="form-check-label" >動詞</label>
+              </div>
+              <div class="me-3">
+                <input type="checkbox" class="form-check-input" name="形容詞" id="filter_形容詞" bind:group={analyzedWordsFilter} value="形容詞">
+                <label for="filter_形容詞" class="form-check-label" >形容詞</label>
+              </div>
+              <div class="me-3">
+                <input type="checkbox" class="form-check-input" name="全て" id="filter_all" bind:group={analyzedWordsFilter} value="all">
+                <label for="filter_all" class="form-check-label" >全て</label>
+              </div>
+            </div>
+            <div class="overflow-auto mb-3" style="max-height: 300px;">
               <div class="d-flex flex-wrap gap-2">
-                {#each analyzedWords as word}
+                {#each analyzedWords.filter(word => (analyzedWordsFilter.includes(word.partOfSpeech)) || (analyzedWordsFilter.includes("all"))) as word}
                   <button
                     class="btn btn-sm {word.selected
                       ? 'btn-primary'
@@ -219,6 +253,31 @@ async function publish() {
                   </button>
                 {:else}
                   <p class="text-muted">単語が抽出されていません</p>
+                {/each}
+              </div>
+            </div>
+            <div>
+              <div class="form-label">単語追加</div>
+              <div class="row g-2 mb-3">
+                <div class="col-auto">
+                  <input type="text" class="form-control" bind:value={addWord}>
+                </div>
+                <div class="col-auto">
+                  <button class="btn btn-primary" on:click={addWordItem}>追加</button>
+                </div>
+              </div>
+              <div class="">
+                {#each addWords as word}
+                  <button
+                    class="btn btn-sm {word.selected
+                      ? 'btn-primary'
+                      : 'btn-outline-primary'}"
+                    on:click={() => {
+                      word.selected = !word.selected;
+                    }}
+                  >
+                    {word.word}
+                  </button>
                 {/each}
               </div>
             </div>
